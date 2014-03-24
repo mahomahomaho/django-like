@@ -3,6 +3,9 @@ from django.db import connection
 from django.db.models.fields import Field, subclassing
 from django.db.models.sql.constants import QUERY_TERMS
 
+from django.conf import  settings
+
+REALLIKE = getattr(settings,"DJANGOLIKE_REAL_LIKE",False) 
 
 if isinstance(QUERY_TERMS, set):
     QUERY_TERMS.add('like')
@@ -12,7 +15,10 @@ else:
     QUERY_TERMS['ilike'] = None
 
 connection.operators['like'] = connection.operators['contains']
-connection.operators['ilike'] = connection.operators['icontains']
+if REALLIKE:
+    connection.operators['ilike'] = "ILIKE %s"
+else:
+    connection.operators['ilike'] = connection.operators['icontains']
 NEW_LOOKUP_TYPE = ('like', 'ilike')
 
 
@@ -51,7 +57,7 @@ def monkey_get_db_prep_lookup(cls):
 
 def lookup_cast(self, lookup_type):
     lookup = '%s'
-    if lookup_type == 'ilike':
+    if lookup_type == 'ilike' and not REALLIKE:
         return 'UPPER(%s)' % lookup
     return self.lookup_cast_origin(lookup_type)
 
